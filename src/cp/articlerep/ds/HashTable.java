@@ -151,4 +151,14 @@ public class HashTable<K extends Comparable<K>, V> implements Map<K, V> {
 		return null;
 	}
 
+	@Override
+	public Lock getReadLock() {
+		return readLock;
+	}
+
+	@Override
+	public Lock getWriteLock() {
+		return writeLock;
+	}
+
 }

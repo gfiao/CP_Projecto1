@@ -1,5 +1,6 @@
 package cp.articlerep.ds;
 
+import java.util.ArrayList;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -8,11 +9,9 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
  */
 public class HashTable<K extends Comparable<K>, V> implements Map<K, V> {
 
-	//TODO associar um lock a cada elemento do mapa
-	private ReentrantReadWriteLock rwl = new ReentrantReadWriteLock();
-	private Lock readLock = rwl.readLock();
-	private Lock writeLock = rwl.readLock();
-	
+	// TODO associar um lock a cada elemento do mapa
+	private ReentrantReadWriteLock[] locks;
+
 	private static class Node {
 		public Object key;
 		public Object value;
@@ -33,6 +32,10 @@ public class HashTable<K extends Comparable<K>, V> implements Map<K, V> {
 
 	public HashTable(int size) {
 		this.table = new Node[size];
+
+		locks = new ReentrantReadWriteLock[size];
+		for (int i = 0; i < size; i++)
+			locks[i] = new ReentrantReadWriteLock();
 	}
 
 	private int calcTablePos(K key) {
@@ -153,13 +156,19 @@ public class HashTable<K extends Comparable<K>, V> implements Map<K, V> {
 	}
 
 	@Override
-	public Lock getReadLock() {
-		return readLock;
+	public Lock getReadLock(K key) {
+		return locks[calcTablePos(key)].readLock();
 	}
 
 	@Override
-	public Lock getWriteLock() {
-		return writeLock;
+	public Lock getWriteLock(K key) {
+		return locks[calcTablePos(key)].writeLock();
+	}
+
+	@Override //TODO retornar todos os locks? ou é preferivel arranjar 
+				//maneira de apenas retornar aqueles que queremos
+	public ReentrantReadWriteLock[] getLocks() {
+		return locks;
 	}
 
 }

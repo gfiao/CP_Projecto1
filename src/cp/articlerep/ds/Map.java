@@ -1,6 +1,7 @@
 package cp.articlerep.ds;
 
 import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
  * @author Ricardo Dias
@@ -14,6 +15,7 @@ public interface Map<K extends Comparable<K>, V> {
 	public Iterator<V> values();
 	public Iterator<K> keys();
 	
-	public Lock getReadLock();
-	public Lock getWriteLock();
+	public ReentrantReadWriteLock[] getLocks();
+	public Lock getReadLock(K key);
+	public Lock getWriteLock(K key);
 }

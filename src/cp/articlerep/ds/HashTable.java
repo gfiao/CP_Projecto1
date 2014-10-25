@@ -8,6 +8,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
  */
 public class HashTable<K extends Comparable<K>, V> implements Map<K, V> {
 
+	//TODO associar um lock a cada elemento do mapa
 	private ReentrantReadWriteLock rwl = new ReentrantReadWriteLock();
 	private Lock readLock = rwl.readLock();
 	private Lock writeLock = rwl.readLock();

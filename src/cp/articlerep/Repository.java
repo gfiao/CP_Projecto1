@@ -1,7 +1,6 @@
 package cp.articlerep;
 
 import java.util.HashSet;
-import java.util.concurrent.locks.*;
 
 import cp.articlerep.ds.Iterator;
 import cp.articlerep.ds.LinkedList;
@@ -17,10 +16,6 @@ public class Repository {
 	private Map<String, List<Article>> byAuthor;
 	private Map<String, List<Article>> byKeyword;
 	private Map<Integer, Article> byArticleId;
-	
-//	private ReentrantReadWriteLock rwl = new ReentrantReadWriteLock();
-//	private Lock readLock = rwl.readLock();
-//	private Lock writeLock = rwl.writeLock();
 
 	public Repository(int nkeys) {
 		this.byAuthor = new HashTable<String, List<Article>>(nkeys*2);
@@ -28,6 +23,7 @@ public class Repository {
 		this.byArticleId = new HashTable<Integer, Article>(nkeys*2);
 	}
 
+	//TODO meti locks aqui, confirmar se é assim
 	public boolean insertArticle(Article a) {
 
 		if (byArticleId.contains(a.getId()))
@@ -36,13 +32,18 @@ public class Repository {
 		Iterator<String> authors = a.getAuthors().iterator();
 		while (authors.hasNext()) {
 			String name = authors.next();
-
+				
 			List<Article> ll = byAuthor.get(name);
+			
 			if (ll == null) {
 				ll = new LinkedList<Article>();
+				byAuthor.getWriteLock().lock();
 				byAuthor.put(name, ll);
+				byAuthor.getWriteLock().unlock();
 			}
+			ll.getWriteLock().lock();
 			ll.add(a);
+			ll.getWriteLock().unlock();
 		}
 
 		Iterator<String> keywords = a.getKeywords().iterator();
@@ -52,30 +53,45 @@ public class Repository {
 			List<Article> ll = byKeyword.get(keyword);
 			if (ll == null) {
 				ll = new LinkedList<Article>();
+				byKeyword.getWriteLock().lock();
 				byKeyword.put(keyword, ll);
+				byKeyword.getWriteLock().unlock();
 			} 
+			ll.getWriteLock().lock();
 			ll.add(a);
+			ll.getWriteLock().unlock();
 		}
 
+		byArticleId.getWriteLock().lock();
 		byArticleId.put(a.getId(), a);
+		byArticleId.getWriteLock().unlock();
 
 		return true;
 	}
 
+	//TODO
 	public void removeArticle(int id) {
+		byArticleId.getReadLock().lock();
 		Article a = byArticleId.get(id);
 
 		if (a == null)
 			return;
+		byArticleId.getReadLock().unlock();
 		
+		byArticleId.getWriteLock().lock();
 		byArticleId.remove(id);
+		byArticleId.getWriteLock().unlock();
 
 		Iterator<String> keywords = a.getKeywords().iterator();
 		while (keywords.hasNext()) {
 			String keyword = keywords.next();
 
+			byKeyword.getReadLock().lock();
 			List<Article> ll = byKeyword.get(keyword);
+			byKeyword.getReadLock().unlock();
+			
 			if (ll != null) {
+				ll.getWriteLock().lock();
 				int pos = 0;
 				Iterator<Article> it = ll.iterator();
 				while (it.hasNext()) {
@@ -86,9 +102,13 @@ public class Repository {
 					pos++;
 				}
 				ll.remove(pos);
+				ll.getWriteLock().unlock();
+				
 				it = ll.iterator();
 				if (!it.hasNext()) { // checks if the list is empty
+					byKeyword.getWriteLock().lock();
 					byKeyword.remove(keyword);
+					byKeyword.getWriteLock().unlock();
 				}
 			}
 		}
@@ -96,9 +116,13 @@ public class Repository {
 		Iterator<String> authors = a.getAuthors().iterator();
 		while (authors.hasNext()) {
 			String name = authors.next();
-
+			
+			byAuthor.getReadLock().lock();
 			List<Article> ll = byAuthor.get(name);
+			byAuthor.getReadLock().unlock();
+			
 			if (ll != null) {
+				ll.getWriteLock().lock();
 				int pos = 0;
 				Iterator<Article> it = ll.iterator();
 				while (it.hasNext()) {
@@ -109,9 +133,12 @@ public class Repository {
 					pos++;
 				}
 				ll.remove(pos);
+				ll.getWriteLock().unlock();
 				it = ll.iterator(); 
 				if (!it.hasNext()) { // checks if the list is empty
+					byAuthor.getWriteLock().lock();
 					byAuthor.remove(name);
+					byAuthor.getWriteLock().unlock();
 				}
 			}
 		}
@@ -123,12 +150,16 @@ public class Repository {
 		Iterator<String> it = authors.iterator();
 		while (it.hasNext()) {
 			String name = it.next();
+			byAuthor.getReadLock().lock();
 			List<Article> as = byAuthor.get(name);
+			byAuthor.getReadLock().unlock();
 			if (as != null) {
 				Iterator<Article> ait = as.iterator();
 				while (ait.hasNext()) {
 					Article a = ait.next();
+					res.getWriteLock().lock();
 					res.add(a);
+					res.getWriteLock().unlock();
 				}
 			}
 		}
@@ -142,12 +173,16 @@ public class Repository {
 		Iterator<String> it = keywords.iterator();
 		while (it.hasNext()) {
 			String keyword = it.next();
+			byKeyword.getReadLock().lock();
 			List<Article> as = byKeyword.get(keyword);
+			byKeyword.getReadLock().unlock();
 			if (as != null) {
 				Iterator<Article> ait = as.iterator();
 				while (ait.hasNext()) {
 					Article a = ait.next();
+					res.getWriteLock().lock();
 					res.add(a);
+					res.getWriteLock().unlock();
 				}
 			}
 		}
@@ -167,7 +202,9 @@ public class Repository {
 		HashSet<Integer> articleIds = new HashSet<Integer>();
 		int articleCount = 0;
 		
+		byArticleId.getReadLock().lock();
 		Iterator<Article> aIt = byArticleId.values();
+		byArticleId.getReadLock().unlock();
 		while(aIt.hasNext()) {
 			Article a = aIt.next();
 			
@@ -179,6 +216,7 @@ public class Repository {
 			while(authIt.hasNext()) {
 				String name = authIt.next();
 				if (!searchAuthorArticle(a, name)) {
+					System.out.println("1");
 					return false;
 				}
 			}
@@ -188,6 +226,7 @@ public class Repository {
 			while(keyIt.hasNext()) {
 				String keyword = keyIt.next();
 				if (!searchKeywordArticle(a, keyword)) {
+					System.out.println("2");
 					return false;
 				}
 			}
@@ -197,7 +236,9 @@ public class Repository {
 	}
 	
 	private boolean searchAuthorArticle(Article a, String author) {
+		byAuthor.getReadLock().lock();
 		List<Article> ll = byAuthor.get(author);
+		byAuthor.getReadLock().unlock();
 		if (ll != null) {
 			Iterator<Article> it = ll.iterator();
 			while (it.hasNext()) {
@@ -210,7 +251,9 @@ public class Repository {
 	}
 
 	private boolean searchKeywordArticle(Article a, String keyword) {
+		byKeyword.getReadLock().lock();
 		List<Article> ll = byKeyword.get(keyword);
+		byKeyword.getReadLock().unlock();
 		if (ll != null) {
 			Iterator<Article> it = ll.iterator();
 			while (it.hasNext()) {

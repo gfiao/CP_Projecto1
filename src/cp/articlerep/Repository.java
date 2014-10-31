@@ -1,6 +1,7 @@
 package cp.articlerep;
 
 import java.util.HashSet;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import cp.articlerep.ds.Iterator;
 import cp.articlerep.ds.LinkedList;
@@ -18,80 +19,103 @@ public class Repository {
 	private Map<Integer, Article> byArticleId;
 
 	public Repository(int nkeys) {
-		this.byAuthor = new HashTable<String, List<Article>>(nkeys*2);
-		this.byKeyword = new HashTable<String, List<Article>>(nkeys*2);
-		this.byArticleId = new HashTable<Integer, Article>(nkeys*2);
+		this.byAuthor = new HashTable<String, List<Article>>(nkeys * 2);
+		this.byKeyword = new HashTable<String, List<Article>>(nkeys * 2);
+		this.byArticleId = new HashTable<Integer, Article>(nkeys * 2);
 	}
 
-	//TODO meti locks aqui, confirmar se é assim
 	public boolean insertArticle(Article a) {
 
-		if (byArticleId.contains(a.getId()))
+		ReentrantReadWriteLock aLock = byArticleId.getLock(a.getId());
+		ReentrantReadWriteLock auLock;
+		ReentrantReadWriteLock kLock;
+
+		aLock.readLock().lock();
+
+		if (byArticleId.contains(a.getId())) {
+			aLock.readLock().unlock();
 			return false;
+		}
+		aLock.readLock().unlock();
+		aLock.writeLock().lock();
 
 		Iterator<String> authors = a.getAuthors().iterator();
 		while (authors.hasNext()) {
 			String name = authors.next();
-				
+
+			// TODO
+			// Faz lock a cada autor
+			// Tenho de fazer lock a todos ao mesmo tempo? ou basta 1 a 1?
+			auLock = byAuthor.getLock(name);
+			auLock.writeLock().lock();
+
 			List<Article> ll = byAuthor.get(name);
-			
+
 			if (ll == null) {
 				ll = new LinkedList<Article>();
-//				byAuthor.getWriteLock(name).lock();
 				byAuthor.put(name, ll);
-//				byAuthor.getWriteLock(name).unlock();
 			}
-//			ll.getWriteLock().lock();
 			ll.add(a);
-//			ll.getWriteLock().unlock();
+			auLock.writeLock().unlock();
 		}
 
 		Iterator<String> keywords = a.getKeywords().iterator();
 		while (keywords.hasNext()) {
 			String keyword = keywords.next();
 
+			// TODO
+			// Faz lock a cada autor
+			// Tenho de fazer lock a todos ao mesmo tempo? ou basta 1 a 1?
+			kLock = byKeyword.getLock(keyword);
+			kLock.writeLock().lock();
+
 			List<Article> ll = byKeyword.get(keyword);
 			if (ll == null) {
 				ll = new LinkedList<Article>();
-//				byKeyword.getWriteLock(keyword).lock();
 				byKeyword.put(keyword, ll);
-//				byKeyword.getWriteLock(keyword).unlock();
-			} 
-//			ll.getWriteLock().lock();
+			}
 			ll.add(a);
-//			ll.getWriteLock().unlock();
+			kLock.writeLock().unlock();
 		}
 
-//		byArticleId.getWriteLock(a.getId()).lock();
 		byArticleId.put(a.getId(), a);
-//		byArticleId.getWriteLock(a.getId()).unlock();
+
+		aLock.writeLock().unlock();
 
 		return true;
 	}
 
-	//TODO
 	public void removeArticle(int id) {
-//		byArticleId.getReadLock(id).lock();
+		ReentrantReadWriteLock aLock = byArticleId.getLock(id);
+		ReentrantReadWriteLock auLock;
+		ReentrantReadWriteLock kLock;
+
+		// read lock para fazer get
+		aLock.readLock().lock();
 		Article a = byArticleId.get(id);
 
-		if (a == null)
+		if (a == null) {
+			aLock.readLock().unlock();
 			return;
-//		byArticleId.getReadLock(id).unlock();
-		
-//		byArticleId.getWriteLock(id).lock();
+		}
+		aLock.readLock().unlock();
+
+		// TODO write lock para poder eliminar
+		aLock.writeLock().lock();
 		byArticleId.remove(id);
-//		byArticleId.getWriteLock(id).unlock();
+		aLock.writeLock().unlock();
 
 		Iterator<String> keywords = a.getKeywords().iterator();
 		while (keywords.hasNext()) {
 			String keyword = keywords.next();
 
-//			byKeyword.getReadLock(keyword).lock();
+			// TODO
+			kLock = byKeyword.getLock(keyword);
+			kLock.writeLock().lock();
+
 			List<Article> ll = byKeyword.get(keyword);
-//			byKeyword.getReadLock(keyword).unlock();
-			
+
 			if (ll != null) {
-//				ll.getWriteLock().lock();
 				int pos = 0;
 				Iterator<Article> it = ll.iterator();
 				while (it.hasNext()) {
@@ -102,27 +126,26 @@ public class Repository {
 					pos++;
 				}
 				ll.remove(pos);
-//				ll.getWriteLock().unlock();
-				
+
 				it = ll.iterator();
 				if (!it.hasNext()) { // checks if the list is empty
-//					byKeyword.getWriteLock(keyword).lock();
 					byKeyword.remove(keyword);
-//					byKeyword.getWriteLock(keyword).unlock();
 				}
+				kLock.writeLock().unlock();
 			}
 		}
 
 		Iterator<String> authors = a.getAuthors().iterator();
 		while (authors.hasNext()) {
 			String name = authors.next();
-			
-//			byAuthor.getReadLock(name).lock();
+
+			// TODO
+			auLock = byAuthor.getLock(name);
+			auLock.writeLock().lock();
+
 			List<Article> ll = byAuthor.get(name);
-//			byAuthor.getReadLock(name).unlock();
-			
+
 			if (ll != null) {
-//				ll.getWriteLock().lock();
 				int pos = 0;
 				Iterator<Article> it = ll.iterator();
 				while (it.hasNext()) {
@@ -133,13 +156,11 @@ public class Repository {
 					pos++;
 				}
 				ll.remove(pos);
-//				ll.getWriteLock().unlock();
-				it = ll.iterator(); 
+				it = ll.iterator();
 				if (!it.hasNext()) { // checks if the list is empty
-//					byAuthor.getWriteLock(name).lock();
 					byAuthor.remove(name);
-//					byAuthor.getWriteLock(name).unlock();
 				}
+				auLock.writeLock().unlock();
 			}
 		}
 	}
@@ -150,16 +171,12 @@ public class Repository {
 		Iterator<String> it = authors.iterator();
 		while (it.hasNext()) {
 			String name = it.next();
-//			byAuthor.getReadLock(name).lock();
 			List<Article> as = byAuthor.get(name);
-//			byAuthor.getReadLock(name).unlock();
 			if (as != null) {
 				Iterator<Article> ait = as.iterator();
 				while (ait.hasNext()) {
 					Article a = ait.next();
-//					res.getWriteLock().lock();
 					res.add(a);
-//					res.getWriteLock().unlock();
 				}
 			}
 		}
@@ -173,16 +190,12 @@ public class Repository {
 		Iterator<String> it = keywords.iterator();
 		while (it.hasNext()) {
 			String keyword = it.next();
-//			byKeyword.getReadLock(keyword).lock();
 			List<Article> as = byKeyword.get(keyword);
-//			byKeyword.getReadLock(keyword).unlock();
 			if (as != null) {
 				Iterator<Article> ait = as.iterator();
 				while (ait.hasNext()) {
 					Article a = ait.next();
-//					res.getWriteLock().lock();
 					res.add(a);
-//					res.getWriteLock().unlock();
 				}
 			}
 		}
@@ -190,40 +203,36 @@ public class Repository {
 		return res;
 	}
 
-	
 	/**
 	 * This method is supposed to be executed with no concurrent thread
 	 * accessing the repository.
 	 * 
 	 */
-	//TODO
 	public boolean validate() {
-		
+
 		HashSet<Integer> articleIds = new HashSet<Integer>();
 		int articleCount = 0;
-		
-//		byArticleId.getReadLock().lock();
+
 		Iterator<Article> aIt = byArticleId.values();
-//		byArticleId.getReadLock().unlock();
-		while(aIt.hasNext()) {
+		while (aIt.hasNext()) {
 			Article a = aIt.next();
-			
+
 			articleIds.add(a.getId());
 			articleCount++;
-			
+
 			// check the authors consistency
 			Iterator<String> authIt = a.getAuthors().iterator();
-			while(authIt.hasNext()) {
+			while (authIt.hasNext()) {
 				String name = authIt.next();
 				if (!searchAuthorArticle(a, name)) {
 					System.out.println("1");
 					return false;
 				}
 			}
-			
+
 			// check the keywords consistency
 			Iterator<String> keyIt = a.getKeywords().iterator();
-			while(keyIt.hasNext()) {
+			while (keyIt.hasNext()) {
 				String keyword = keyIt.next();
 				if (!searchKeywordArticle(a, keyword)) {
 					System.out.println("2");
@@ -231,14 +240,12 @@ public class Repository {
 				}
 			}
 		}
-		
+
 		return articleCount == articleIds.size();
 	}
-	
+
 	private boolean searchAuthorArticle(Article a, String author) {
-//		byAuthor.getReadLock(author).lock();
 		List<Article> ll = byAuthor.get(author);
-//		byAuthor.getReadLock(author).unlock();
 		if (ll != null) {
 			Iterator<Article> it = ll.iterator();
 			while (it.hasNext()) {
@@ -251,9 +258,7 @@ public class Repository {
 	}
 
 	private boolean searchKeywordArticle(Article a, String keyword) {
-//		byKeyword.getReadLock(keyword).lock();
 		List<Article> ll = byKeyword.get(keyword);
-//		byKeyword.getReadLock(keyword).unlock();
 		if (ll != null) {
 			Iterator<Article> it = ll.iterator();
 			while (it.hasNext()) {

@@ -34,7 +34,7 @@ public class HashTable<K extends Comparable<K>, V> implements Map<K, V> {
 
 		locks = new ReentrantReadWriteLock[size];
 		for (int i = 0; i < size; i++)
-			locks[i] = new ReentrantReadWriteLock();
+			locks[i] = new ReentrantReadWriteLock(true);
 	}
 
 	private int calcTablePos(K key) {
@@ -164,10 +164,16 @@ public class HashTable<K extends Comparable<K>, V> implements Map<K, V> {
 		return locks[calcTablePos(key)].writeLock();
 	}
 
-	@Override //TODO retornar todos os locks? ou é preferivel arranjar 
-				//maneira de apenas retornar aqueles que queremos
+	@Override
+	// TODO retornar todos os locks? ou é preferivel arranjar
+	// maneira de apenas retornar aqueles que queremos
 	public ReentrantReadWriteLock[] getLocks() {
 		return locks;
+	}
+
+	@Override
+	public ReentrantReadWriteLock getLock(K key) {
+		return locks[calcTablePos(key)];
 	}
 
 }

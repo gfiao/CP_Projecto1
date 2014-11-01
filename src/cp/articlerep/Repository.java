@@ -30,14 +30,12 @@ public class Repository {
 		ReentrantReadWriteLock auLock;
 		ReentrantReadWriteLock kLock;
 
-		aLock.readLock().lock();
+		aLock.writeLock().lock();
 
 		if (byArticleId.contains(a.getId())) {
-			aLock.readLock().unlock();
+			aLock.writeLock().unlock();
 			return false;
 		}
-		aLock.readLock().unlock();
-		aLock.writeLock().lock();
 
 		Iterator<String> authors = a.getAuthors().iterator();
 		while (authors.hasNext()) {
@@ -91,17 +89,14 @@ public class Repository {
 		ReentrantReadWriteLock kLock;
 
 		// read lock para fazer get
-		aLock.readLock().lock();
+		aLock.writeLock().lock();
 		Article a = byArticleId.get(id);
 
 		if (a == null) {
-			aLock.readLock().unlock();
+			aLock.writeLock().unlock();
 			return;
 		}
-		aLock.readLock().unlock();
 
-		// TODO write lock para poder eliminar
-		aLock.writeLock().lock();
 		byArticleId.remove(id);
 		aLock.writeLock().unlock();
 
@@ -166,11 +161,18 @@ public class Repository {
 	}
 
 	public List<Article> findArticleByAuthor(List<String> authors) {
+		ReentrantReadWriteLock auLock;
+
 		List<Article> res = new LinkedList<Article>();
 
 		Iterator<String> it = authors.iterator();
 		while (it.hasNext()) {
 			String name = it.next();
+
+			// TODO
+			auLock = byAuthor.getLock(name);
+			auLock.readLock().lock();
+
 			List<Article> as = byAuthor.get(name);
 			if (as != null) {
 				Iterator<Article> ait = as.iterator();
@@ -179,17 +181,25 @@ public class Repository {
 					res.add(a);
 				}
 			}
+			auLock.readLock().unlock();
 		}
 
 		return res;
 	}
 
 	public List<Article> findArticleByKeyword(List<String> keywords) {
+		ReentrantReadWriteLock klock;
+
 		List<Article> res = new LinkedList<Article>();
 
 		Iterator<String> it = keywords.iterator();
 		while (it.hasNext()) {
 			String keyword = it.next();
+
+			// TODO
+			klock = byKeyword.getLock(keyword);
+			klock.readLock().lock();
+
 			List<Article> as = byKeyword.get(keyword);
 			if (as != null) {
 				Iterator<Article> ait = as.iterator();
@@ -198,6 +208,8 @@ public class Repository {
 					res.add(a);
 				}
 			}
+
+			klock.readLock().unlock();
 		}
 
 		return res;
@@ -245,6 +257,7 @@ public class Repository {
 	}
 
 	private boolean searchAuthorArticle(Article a, String author) {
+
 		List<Article> ll = byAuthor.get(author);
 		if (ll != null) {
 			Iterator<Article> it = ll.iterator();
@@ -258,6 +271,7 @@ public class Repository {
 	}
 
 	private boolean searchKeywordArticle(Article a, String keyword) {
+
 		List<Article> ll = byKeyword.get(keyword);
 		if (ll != null) {
 			Iterator<Article> it = ll.iterator();

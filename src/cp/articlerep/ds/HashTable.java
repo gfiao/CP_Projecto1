@@ -165,13 +165,6 @@ public class HashTable<K extends Comparable<K>, V> implements Map<K, V> {
 	}
 
 	@Override
-	// TODO retornar todos os locks? ou é preferivel arranjar
-	// maneira de apenas retornar aqueles que queremos
-	public ReentrantReadWriteLock[] getLocks() {
-		return locks;
-	}
-
-	@Override
 	public ReentrantReadWriteLock getLock(K key) {
 		return locks[calcTablePos(key)];
 	}

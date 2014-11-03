@@ -41,9 +41,7 @@ public class Repository {
 		while (authors.hasNext()) {
 			String name = authors.next();
 
-			// TODO
 			// Faz lock a cada autor
-			// Tenho de fazer lock a todos ao mesmo tempo? ou basta 1 a 1?
 			auLock = byAuthor.getLock(name);
 			auLock.writeLock().lock();
 
@@ -61,9 +59,7 @@ public class Repository {
 		while (keywords.hasNext()) {
 			String keyword = keywords.next();
 
-			// TODO
 			// Faz lock a cada autor
-			// Tenho de fazer lock a todos ao mesmo tempo? ou basta 1 a 1?
 			kLock = byKeyword.getLock(keyword);
 			kLock.writeLock().lock();
 
@@ -104,7 +100,6 @@ public class Repository {
 		while (keywords.hasNext()) {
 			String keyword = keywords.next();
 
-			// TODO
 			kLock = byKeyword.getLock(keyword);
 			kLock.writeLock().lock();
 
@@ -134,7 +129,6 @@ public class Repository {
 		while (authors.hasNext()) {
 			String name = authors.next();
 
-			// TODO
 			auLock = byAuthor.getLock(name);
 			auLock.writeLock().lock();
 
@@ -169,7 +163,6 @@ public class Repository {
 		while (it.hasNext()) {
 			String name = it.next();
 
-			// TODO
 			auLock = byAuthor.getLock(name);
 			auLock.readLock().lock();
 
@@ -196,7 +189,6 @@ public class Repository {
 		while (it.hasNext()) {
 			String keyword = it.next();
 
-			// TODO
 			klock = byKeyword.getLock(keyword);
 			klock.readLock().lock();
 

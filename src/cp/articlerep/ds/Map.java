@@ -15,7 +15,6 @@ public interface Map<K extends Comparable<K>, V> {
 	public Iterator<V> values();
 	public Iterator<K> keys();
 	
-	public ReentrantReadWriteLock[] getLocks();
 	public Lock getReadLock(K key);
 	public Lock getWriteLock(K key);
 	public ReentrantReadWriteLock getLock(K key);

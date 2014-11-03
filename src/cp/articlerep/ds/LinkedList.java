@@ -1,16 +1,9 @@
 package cp.articlerep.ds;
 
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
-
 /**
  * @author Ricardo Dias
  */
 public class LinkedList<V> implements List<V> {
-
-	private ReentrantReadWriteLock rwl = new ReentrantReadWriteLock();
-	private Lock readLock = rwl.readLock();
-	private Lock writeLock = rwl.readLock();
 	
 	public class Node {
 		final private V m_value;
@@ -143,15 +136,5 @@ public class LinkedList<V> implements List<V> {
 		sb.append("]");
 		
 		return sb.toString();
-	}
-
-	@Override
-	public Lock getReadLock() {
-		return readLock;
-	}
-
-	@Override
-	public Lock getWriteLock() {
-		return writeLock;
 	}
 }

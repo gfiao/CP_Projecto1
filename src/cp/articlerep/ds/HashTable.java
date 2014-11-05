@@ -1,6 +1,5 @@
 package cp.articlerep.ds;
 
-import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
@@ -152,16 +151,6 @@ public class HashTable<K extends Comparable<K>, V> implements Map<K, V> {
 	@Override
 	public Iterator<K> keys() {
 		return null;
-	}
-
-	@Override
-	public Lock getReadLock(K key) {
-		return locks[calcTablePos(key)].readLock();
-	}
-
-	@Override
-	public Lock getWriteLock(K key) {
-		return locks[calcTablePos(key)].writeLock();
 	}
 
 	@Override

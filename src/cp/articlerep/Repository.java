@@ -25,7 +25,7 @@ public class Repository {
 	}
 
 	/**
-	 * Método que faz lock a uma lista de Locks
+	 * Metodo que faz lock a uma lista de Locks
 	 * 
 	 * @param locks
 	 *            - Lista de locks
@@ -48,7 +48,7 @@ public class Repository {
 	}
 
 	/**
-	 * Método que faz unlock a uma lista de Locks
+	 * Metodo que faz unlock a uma lista de Locks
 	 * 
 	 * @param locks
 	 *            - Lista de locks

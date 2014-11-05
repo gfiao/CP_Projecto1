@@ -1,5 +1,7 @@
 package cp.articlerep.ds;
 
+import java.util.SortedSet;
+import java.util.TreeSet;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
@@ -7,7 +9,6 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
  */
 public class HashTable<K extends Comparable<K>, V> implements Map<K, V> {
 
-	// TODO associar um lock a cada elemento do mapa
 	private ReentrantReadWriteLock[] locks;
 
 	private static class Node {
@@ -158,4 +159,19 @@ public class HashTable<K extends Comparable<K>, V> implements Map<K, V> {
 		return locks[calcTablePos(key)];
 	}
 
+	@Override
+	public List<ReentrantReadWriteLock> getLocks(List<K> keys) {
+
+		SortedSet<Integer> locksPos = new TreeSet<Integer>();
+		List<ReentrantReadWriteLock> sortedLocks = new LinkedList<ReentrantReadWriteLock>();
+		Iterator<K> keyIterator = keys.iterator();
+		while (keyIterator.hasNext())
+			locksPos.add(calcTablePos(keyIterator.next()));
+
+		for (Integer pos : locksPos) {
+			sortedLocks.add(locks[pos]);
+		}
+
+		return sortedLocks;
+	}
 }

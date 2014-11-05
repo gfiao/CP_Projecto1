@@ -5,23 +5,23 @@ import cp.articlerep.ds.List;
 import cp.articlerep.ds.Iterator;
 
 public class Article {
-	
+
 	private int id;
 	private String name;
 	private List<String> authors;
 	private List<String> keywords;
-	
+
 	public Article(int id, String name) {
 		this.id = id;
 		this.name = name;
 		this.authors = new LinkedList<String>();
 		this.keywords = new LinkedList<String>();
 	}
-	
+
 	public void addAuthor(String author) {
 		this.authors.add(author);
 	}
-	
+
 	public void addKeyword(String keyword) {
 		this.keywords.add(keyword);
 	}

@@ -24,11 +24,56 @@ public class Repository {
 		this.byArticleId = new HashTable<Integer, Article>(nkeys * 2);
 	}
 
+	/**
+	 * Método que faz lock a uma lista de Locks
+	 * 
+	 * @param locks
+	 *            - Lista de locks
+	 * @param write
+	 *            - variavel boleana que define se vai ser um writeLock ou
+	 *            readLock, writeLock = true, readLock = false
+	 * 
+	 */
+	private void lockList(List<ReentrantReadWriteLock> locks, boolean write) {
+		Iterator<ReentrantReadWriteLock> locksI = locks.iterator();
+		while (locksI.hasNext()) {
+			ReentrantReadWriteLock lock = locksI.next();
+			if (write)
+				lock.writeLock().lock();
+			else {
+				lock.readLock().lock();
+			}
+
+		}
+	}
+
+	/**
+	 * Método que faz unlock a uma lista de Locks
+	 * 
+	 * @param locks
+	 *            - Lista de locks
+	 * @param write
+	 *            - variavel boleana que define se vai ser um writeLock ou
+	 *            readLock, writeLock = true, readLock = false
+	 * 
+	 */
+	private void unlockList(List<ReentrantReadWriteLock> locks, boolean write) {
+		Iterator<ReentrantReadWriteLock> locksI = locks.iterator();
+		while (locksI.hasNext()) {
+			ReentrantReadWriteLock lock = locksI.next();
+
+			if (write)
+				lock.writeLock().unlock();
+			else {
+				lock.readLock().unlock();
+			}
+
+		}
+	}
+
 	public boolean insertArticle(Article a) {
 
 		ReentrantReadWriteLock aLock = byArticleId.getLock(a.getId());
-		ReentrantReadWriteLock auLock;
-		ReentrantReadWriteLock kLock;
 
 		aLock.writeLock().lock();
 
@@ -37,13 +82,20 @@ public class Repository {
 			return false;
 		}
 
+		/*
+		 * Get de todos os locks que nos interessam
+		 */
+		List<ReentrantReadWriteLock> authorLocks = byAuthor.getLocks(a
+				.getAuthors());
+		List<ReentrantReadWriteLock> keywordLocks = byKeyword.getLocks(a
+				.getKeywords());
+
+		lockList(authorLocks, true);
+		lockList(keywordLocks, true);
+
 		Iterator<String> authors = a.getAuthors().iterator();
 		while (authors.hasNext()) {
 			String name = authors.next();
-
-			// Faz lock a cada autor
-			auLock = byAuthor.getLock(name);
-			auLock.writeLock().lock();
 
 			List<Article> ll = byAuthor.get(name);
 
@@ -52,16 +104,11 @@ public class Repository {
 				byAuthor.put(name, ll);
 			}
 			ll.add(a);
-			auLock.writeLock().unlock();
 		}
 
 		Iterator<String> keywords = a.getKeywords().iterator();
 		while (keywords.hasNext()) {
 			String keyword = keywords.next();
-
-			// Faz lock a cada keyword
-			kLock = byKeyword.getLock(keyword);
-			kLock.writeLock().lock();
 
 			List<Article> ll = byKeyword.get(keyword);
 			if (ll == null) {
@@ -69,10 +116,12 @@ public class Repository {
 				byKeyword.put(keyword, ll);
 			}
 			ll.add(a);
-			kLock.writeLock().unlock();
 		}
 
 		byArticleId.put(a.getId(), a);
+
+		unlockList(authorLocks, true);
+		unlockList(keywordLocks, true);
 
 		aLock.writeLock().unlock();
 
@@ -81,10 +130,7 @@ public class Repository {
 
 	public void removeArticle(int id) {
 		ReentrantReadWriteLock aLock = byArticleId.getLock(id);
-		ReentrantReadWriteLock auLock;
-		ReentrantReadWriteLock kLock;
 
-		// read lock para fazer get
 		aLock.writeLock().lock();
 		Article a = byArticleId.get(id);
 
@@ -94,14 +140,21 @@ public class Repository {
 		}
 
 		byArticleId.remove(id);
-		aLock.writeLock().unlock();
+
+		/*
+		 * Get de todos os locks que nos interessam
+		 */
+		List<ReentrantReadWriteLock> authorLocks = byAuthor.getLocks(a
+				.getAuthors());
+		List<ReentrantReadWriteLock> keywordLocks = byKeyword.getLocks(a
+				.getKeywords());
+
+		lockList(authorLocks, true);
+		lockList(keywordLocks, true);
 
 		Iterator<String> keywords = a.getKeywords().iterator();
 		while (keywords.hasNext()) {
 			String keyword = keywords.next();
-
-			kLock = byKeyword.getLock(keyword);
-			kLock.writeLock().lock();
 
 			List<Article> ll = byKeyword.get(keyword);
 
@@ -121,16 +174,12 @@ public class Repository {
 				if (!it.hasNext()) { // checks if the list is empty
 					byKeyword.remove(keyword);
 				}
-				kLock.writeLock().unlock();
 			}
 		}
 
 		Iterator<String> authors = a.getAuthors().iterator();
 		while (authors.hasNext()) {
 			String name = authors.next();
-
-			auLock = byAuthor.getLock(name);
-			auLock.writeLock().lock();
 
 			List<Article> ll = byAuthor.get(name);
 
@@ -149,22 +198,28 @@ public class Repository {
 				if (!it.hasNext()) { // checks if the list is empty
 					byAuthor.remove(name);
 				}
-				auLock.writeLock().unlock();
 			}
 		}
+		unlockList(authorLocks, true);
+		unlockList(keywordLocks, true);
+
+		/*
+		 * Unlock no final do metodo para o programa nao retornar leituras
+		 * erradas
+		 */
+		aLock.writeLock().unlock();
 	}
 
 	public List<Article> findArticleByAuthor(List<String> authors) {
-		ReentrantReadWriteLock auLock;
+
+		List<ReentrantReadWriteLock> authorLocks = byAuthor.getLocks(authors);
+		lockList(authorLocks, false);
 
 		List<Article> res = new LinkedList<Article>();
 
 		Iterator<String> it = authors.iterator();
 		while (it.hasNext()) {
 			String name = it.next();
-
-			auLock = byAuthor.getLock(name);
-			auLock.readLock().lock();
 
 			List<Article> as = byAuthor.get(name);
 			if (as != null) {
@@ -174,23 +229,21 @@ public class Repository {
 					res.add(a);
 				}
 			}
-			auLock.readLock().unlock();
 		}
-
+		unlockList(authorLocks, false);
 		return res;
 	}
 
 	public List<Article> findArticleByKeyword(List<String> keywords) {
-		ReentrantReadWriteLock klock;
+
+		List<ReentrantReadWriteLock> keywordLocks = byAuthor.getLocks(keywords);
+		lockList(keywordLocks, false);
 
 		List<Article> res = new LinkedList<Article>();
 
 		Iterator<String> it = keywords.iterator();
 		while (it.hasNext()) {
 			String keyword = it.next();
-
-			klock = byKeyword.getLock(keyword);
-			klock.readLock().lock();
 
 			List<Article> as = byKeyword.get(keyword);
 			if (as != null) {
@@ -201,9 +254,8 @@ public class Repository {
 				}
 			}
 
-			klock.readLock().unlock();
 		}
-
+		unlockList(keywordLocks, false);
 		return res;
 	}
 

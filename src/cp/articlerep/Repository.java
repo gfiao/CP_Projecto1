@@ -59,7 +59,7 @@ public class Repository {
 		while (keywords.hasNext()) {
 			String keyword = keywords.next();
 
-			// Faz lock a cada autor
+			// Faz lock a cada keyword
 			kLock = byKeyword.getLock(keyword);
 			kLock.writeLock().lock();
 
